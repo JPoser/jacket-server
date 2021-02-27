@@ -37,7 +37,7 @@ def index():
     return "Welcome to Jacket Server, turn back or suffer your DOOM"
 
 @app.route('/api/v1.0/get_tweets', methods=['GET'])
-def get_tasks():
+def get_tweets():
     return jsonify({'colours': colours[0], 'tweets': get_latest_mention()})
 
 if __name__ == '__main__':
