@@ -14,6 +14,12 @@ Backend server for controlling an RGB LED jacket via social media mentions. Supp
 ### 1. Install Dependencies
 
 ```bash
+uv sync
+```
+
+Or if you prefer to use pip:
+
+```bash
 pip install -r requirements.txt
 ```
 
@@ -238,7 +244,77 @@ The codebase uses a plugin-based architecture:
 
 To add a new platform, create a new class in `platforms/` that inherits from `SocialPlatform` and implement the required methods.
 
+## Pre-commit Hooks
+
+The project uses pre-commit hooks to ensure code quality before commits.
+
+### Setup
+
+```bash
+# Install pre-commit hooks
+uv run pre-commit install
+
+# Or if using pip
+pre-commit install
+```
+
+### What Runs
+
+The pre-commit hooks will:
+- **Lint code** with ruff (auto-fixes when possible)
+- **Format code** with ruff formatter
+- **Run unit tests** with pytest
+- **Check file formatting** (trailing whitespace, end of file, etc.)
+- **Validate YAML/JSON/TOML** files
+
+### Manual Run
+
+You can manually run all hooks:
+
+```bash
+uv run pre-commit run --all-files
+```
+
+## Testing
+
+The project includes comprehensive unit tests using pytest.
+
+### Running Tests
+
+```bash
+# Install dependencies (if not already installed)
+uv sync
+
+# Run all tests
+uv run pytest
+
+# Run tests with coverage report
+uv run pytest --cov
+
+# Run specific test file
+uv run pytest tests/test_color_parser.py
+
+# Run tests with verbose output
+uv run pytest -v
+```
+
+Alternatively, if you're using pip:
+
+```bash
+pip install -r requirements.txt
+pytest
+```
+
+### Test Coverage
+
+The test suite covers:
+- **Color parsing** - Hex codes, RGB values, and color names
+- **Platform integrations** - Mastodon and Bluesky platform implementations
+- **API endpoints** - All REST endpoints with authentication
+- **Configuration loading** - API keys, ports, and platform settings
+
+Test coverage reports are generated in `htmlcov/` when running with `--cov`.
+
 ## License
 
 See LICENSE file.
-
