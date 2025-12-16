@@ -21,3 +21,13 @@ config.ini
 # OS
 .DS_Store
 Thumbs.db
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+.hypothesis/
+
+# Pre-commit
+.pre-commit-cache/
