@@ -1,0 +1,13 @@
+[project]
+name = "jacket-server"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "atproto==0.0.40",
+    "configparser==6.0.0",
+    "flask==3.0.0",
+    "flask-cors==4.0.0",
+    "mastodon-py==1.8.1",
+]

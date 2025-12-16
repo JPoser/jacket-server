@@ -19,6 +19,7 @@ CORS(app)  # Enable CORS for ESP32 client
 platforms: Dict[str, any] = {}
 active_platform: Optional[str] = None
 api_key: Optional[str] = None
+server_port: int = 5000
 
 
 def load_config():
@@ -47,6 +48,26 @@ def load_api_key():
             print("⚠ No API key configured (authentication disabled)")
     else:
         print("⚠ No API key configured (authentication disabled)")
+
+
+def load_server_config():
+    """Load server configuration (port, etc.) from config file."""
+    global server_port
+    config = load_config()
+    
+    if 'server' in config:
+        port_str = config['server'].get('port')
+        if port_str:
+            try:
+                server_port = int(port_str)
+                print(f"✓ Server port configured: {server_port}")
+            except ValueError:
+                print(f"⚠ Invalid port '{port_str}', using default: 5000")
+                server_port = 5000
+        else:
+            print(f"⚠ No port configured, using default: 5000")
+    else:
+        print(f"⚠ No server config found, using default port: 5000")
 
 
 def require_api_key(f):
@@ -96,7 +117,8 @@ def initialize_platforms():
         bluesky = BlueskyPlatform()
         bluesky_config = {
             'identifier': config['bluesky'].get('identifier'),
-            'password': config['bluesky'].get('password')
+            'password': config['bluesky'].get('password'),
+            'debug': config['bluesky'].get('debug', 'false')
         }
         if bluesky.initialize(bluesky_config):
             platforms['bluesky'] = bluesky
@@ -255,6 +277,7 @@ def list_platforms():
 if __name__ == '__main__':
     print("Initializing Jacket Server...")
     load_api_key()
+    load_server_config()
     initialize_platforms()
     print(f"Server starting with {len(platforms)} platform(s) available")
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, host='0.0.0.0', port=server_port)

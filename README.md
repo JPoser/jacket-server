@@ -27,11 +27,12 @@ cp config.example.ini config.ini
 
 Edit `config.ini` with your platform credentials:
 
-#### API Authentication
+#### Server Configuration
 
 1. Set a pre-shared API key in the `[server]` section
 2. Use a strong, random key (e.g., generate with `openssl rand -hex 32`)
 3. If no key is set, authentication is disabled (not recommended for production)
+4. Configure the server port (default: 5000) in the `[server]` section
 
 #### Mastodon Setup
 
@@ -54,7 +55,7 @@ Edit `config.ini` with your platform credentials:
 python app.py
 ```
 
-The server will start on `http://0.0.0.0:5000`
+The server will start on `http://0.0.0.0:<port>` where `<port>` is the value configured in `config.ini` (default: 5000).
 
 ## API Endpoints
 
@@ -156,6 +157,74 @@ if (httpCode == 200) {
 ```
 
 **Note:** Always use HTTPS in production to ensure the API key header is encrypted in transit.
+
+## Testing with curl
+
+Here are some curl command examples to test the API endpoints:
+
+### Root Endpoint (No Authentication Required)
+
+```bash
+# Check server status
+curl http://localhost:5000/
+```
+
+### Color Endpoint
+
+```bash
+# Get latest color (with authentication)
+curl -H "X-API-Key: your-api-key-here" http://localhost:5000/api/v1/color
+
+# Get color from specific platform
+curl -H "X-API-Key: your-api-key-here" http://localhost:5000/api/v1/color?platform=mastodon
+
+# Get color with custom mention limit
+curl -H "X-API-Key: your-api-key-here" http://localhost:5000/api/v1/color?limit=5
+```
+
+### Mentions Endpoint
+
+```bash
+# Get recent mentions
+curl -H "X-API-Key: your-api-key-here" http://localhost:5000/api/v1/mentions
+
+# Get mentions from specific platform
+curl -H "X-API-Key: your-api-key-here" http://localhost:5000/api/v1/mentions?platform=bluesky
+
+# Get mentions with custom limit
+curl -H "X-API-Key: your-api-key-here" http://localhost:5000/api/v1/mentions?limit=20
+```
+
+### Platforms Endpoint
+
+```bash
+# List available platforms
+curl -H "X-API-Key: your-api-key-here" http://localhost:5000/api/v1/platforms
+```
+
+### Testing Authentication
+
+```bash
+# Test without API key (should return 401 if authentication is enabled)
+curl http://localhost:5000/api/v1/color
+
+# Test with invalid API key (should return 401)
+curl -H "X-API-Key: wrong-key" http://localhost:5000/api/v1/color
+```
+
+### Pretty Print JSON Responses
+
+For better readability, pipe the output through `jq` (if installed):
+
+```bash
+curl -H "X-API-Key: your-api-key-here" http://localhost:5000/api/v1/color | jq
+```
+
+Or use Python's json.tool:
+
+```bash
+curl -H "X-API-Key: your-api-key-here" http://localhost:5000/api/v1/color | python -m json.tool
+```
 
 ## Architecture
 
