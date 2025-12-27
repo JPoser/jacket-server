@@ -244,6 +244,15 @@ The codebase uses a plugin-based architecture:
 
 To add a new platform, create a new class in `platforms/` that inherits from `SocialPlatform` and implement the required methods.
 
+## CI/CD
+
+The project uses GitHub Actions to automatically run linting and tests on pull requests.
+
+On every pull request to `main`, the following checks run:
+- **Linting** with ruff
+- **Code formatting** check with ruff formatter
+- **Unit tests** with pytest and coverage
+
 ## Pre-commit Hooks
 
 The project uses pre-commit hooks to ensure code quality before commits.
