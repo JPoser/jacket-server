@@ -24,7 +24,7 @@ data "oci_identity_availability_domains" "ads" {
 # Get the first availability domain
 data "oci_identity_availability_domain" "ad" {
   compartment_id = var.compartment_ocid
-  ad_number      = 1
+  ad_number      = 2
 }
 
 # Create VCN

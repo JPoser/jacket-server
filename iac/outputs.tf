@@ -15,7 +15,7 @@ output "instance_ocid" {
 
 output "ssh_command" {
   description = "SSH command to connect to the instance"
-  value       = "ssh opc@${oci_core_instance.jacket_server.public_ip}"
+  value       = "ssh ubuntu@${oci_core_instance.jacket_server.public_ip}"
 }
 
 output "app_url" {
