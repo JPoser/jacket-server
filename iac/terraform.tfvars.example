@@ -1,0 +1,40 @@
+# Copy this file to terraform.tfvars and fill in your values
+# DO NOT commit terraform.tfvars to version control
+
+# OCI Authentication
+tenancy_ocid     = "ocid1.tenancy.oc1..xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+user_ocid        = "ocid1.user.oc1..xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+fingerprint      = "xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx"
+private_key_path = "~/.oci/oci_api_key.pem"
+
+# Compartment
+compartment_ocid = "ocid1.compartment.oc1..xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+# Region
+region = "us-ashburn-1"
+
+# Network (use existing VCN and subnet, or update names)
+vcn_name    = "Default VCN"
+subnet_name = "Default Subnet"
+
+# SSH Public Key (paste your public key here)
+ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC... your-key-here"
+
+# Application port
+app_port = 5000
+
+# Security - restrict SSH access to your IP for better security
+# Use "0.0.0.0/0" to allow from anywhere (not recommended for production)
+# Example: "203.0.113.0/32" for a specific IP
+# Example: "203.0.113.0/24" for a subnet
+ssh_source_cidr = "0.0.0.0/0"
+
+# Application access - who can access the Flask app
+# Use "0.0.0.0/0" for public access, or restrict to specific IPs/subnets
+app_source_cidr = "0.0.0.0/0"
+
+# Tags
+freeform_tags = {
+  Project = "jacket-server"
+  Environment = "production"
+}
