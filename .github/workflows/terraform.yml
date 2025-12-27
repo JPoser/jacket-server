@@ -40,11 +40,9 @@ jobs:
 
       - name: Setup OCI Private Key
         run: |
-          echo "${{ secrets.OCI_PRIVATE_KEY }}" > /tmp/oci_private_key.pem
-          chmod 600 /tmp/oci_private_key.pem
-          echo "TF_VAR_private_key<<EOF" >> $GITHUB_ENV
-          cat /tmp/oci_private_key.pem >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
+          echo "${{ secrets.OCI_PRIVATE_KEY }}" > ${{ runner.temp }}/oci_private_key.pem
+          chmod 600 ${{ runner.temp }}/oci_private_key.pem
+          echo "TF_VAR_private_key_path=${{ runner.temp }}/oci_private_key.pem" >> $GITHUB_ENV
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -115,11 +113,9 @@ jobs:
 
       - name: Setup OCI Private Key
         run: |
-          echo "${{ secrets.OCI_PRIVATE_KEY }}" > /tmp/oci_private_key.pem
-          chmod 600 /tmp/oci_private_key.pem
-          echo "TF_VAR_private_key<<EOF" >> $GITHUB_ENV
-          cat /tmp/oci_private_key.pem >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
+          echo "${{ secrets.OCI_PRIVATE_KEY }}" > ${{ runner.temp }}/oci_private_key.pem
+          chmod 600 ${{ runner.temp }}/oci_private_key.pem
+          echo "TF_VAR_private_key_path=${{ runner.temp }}/oci_private_key.pem" >> $GITHUB_ENV
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
