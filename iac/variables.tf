@@ -13,9 +13,10 @@ variable "fingerprint" {
   type        = string
 }
 
-variable "private_key_path" {
-  description = "Path to the private key file"
+variable "private_key" {
+  description = "Private key content for OCI API authentication"
   type        = string
+  sensitive   = true
 }
 
 variable "compartment_ocid" {

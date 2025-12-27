@@ -42,7 +42,6 @@ coverage.xml
 .terraform.lock.hcl
 terraform.tfvars
 *.tfvars.backup
-backend.tf
 
 # Docker
 .docker/

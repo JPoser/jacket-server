@@ -1,5 +1,5 @@
 terraform {
-  required_version = ">= 1.0"
+  required_version = ">= 1.12"
   required_providers {
     oci = {
       source  = "oracle/oci"
@@ -9,11 +9,11 @@ terraform {
 }
 
 provider "oci" {
-  tenancy_ocid     = var.tenancy_ocid
-  user_ocid        = var.user_ocid
-  fingerprint      = var.fingerprint
-  private_key_path = var.private_key_path
-  region           = var.region
+  tenancy_ocid = var.tenancy_ocid
+  user_ocid    = var.user_ocid
+  fingerprint  = var.fingerprint
+  private_key  = var.private_key
+  region       = var.region
 }
 
 # Get availability domains
@@ -27,25 +27,48 @@ data "oci_identity_availability_domain" "ad" {
   ad_number      = 1
 }
 
-# Get VCN
-data "oci_core_vcns" "vcn" {
+# Create VCN
+resource "oci_core_vcn" "vcn" {
   compartment_id = var.compartment_ocid
   display_name   = var.vcn_name
+  cidr_blocks    = ["10.0.0.0/16"]
+  dns_label      = "jacketserver"
+  freeform_tags  = var.freeform_tags
 }
 
-data "oci_core_vcn" "vcn" {
-  vcn_id = data.oci_core_vcns.vcn.virtual_networks[0].id
-}
-
-# Get subnet
-data "oci_core_subnets" "subnet" {
+# Create Internet Gateway
+resource "oci_core_internet_gateway" "igw" {
   compartment_id = var.compartment_ocid
-  vcn_id         = data.oci_core_vcn.vcn.id
-  display_name   = var.subnet_name
+  vcn_id         = oci_core_vcn.vcn.id
+  display_name   = "${var.vcn_name}-igw"
+  enabled        = true
+  freeform_tags  = var.freeform_tags
 }
 
-data "oci_core_subnet" "subnet" {
-  subnet_id = data.oci_core_subnets.subnet.subnets[0].id
+# Create Route Table
+resource "oci_core_route_table" "rt" {
+  compartment_id = var.compartment_ocid
+  vcn_id         = oci_core_vcn.vcn.id
+  display_name   = "${var.vcn_name}-rt"
+  freeform_tags  = var.freeform_tags
+
+  route_rules {
+    destination       = "0.0.0.0/0"
+    destination_type  = "CIDR_BLOCK"
+    network_entity_id = oci_core_internet_gateway.igw.id
+  }
+}
+
+# Create Subnet
+resource "oci_core_subnet" "subnet" {
+  compartment_id    = var.compartment_ocid
+  vcn_id            = oci_core_vcn.vcn.id
+  display_name      = var.subnet_name
+  cidr_block        = "10.0.1.0/24"
+  dns_label         = "subnet"
+  route_table_id    = oci_core_route_table.rt.id
+  security_list_ids = [oci_core_security_list.jacket_server_sl.id]
+  freeform_tags     = var.freeform_tags
 }
 
 # Get image for Ubuntu 22.04
@@ -61,7 +84,7 @@ data "oci_core_images" "ubuntu" {
 # Security list for allowing HTTP/HTTPS and SSH
 resource "oci_core_security_list" "jacket_server_sl" {
   compartment_id = var.compartment_ocid
-  vcn_id         = data.oci_core_vcn.vcn.id
+  vcn_id         = oci_core_vcn.vcn.id
   display_name   = "jacket-server-security-list"
   freeform_tags  = var.freeform_tags
 
@@ -106,9 +129,9 @@ resource "oci_core_instance" "jacket_server" {
   freeform_tags       = var.freeform_tags
 
   create_vnic_details {
-    subnet_id        = data.oci_core_subnet.subnet.id
+    subnet_id        = oci_core_subnet.subnet.id
     assign_public_ip = true
-    hostname_label   = "jacket-server"
+    hostname_label   = "jacketserver"
   }
 
   source_details {

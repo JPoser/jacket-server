@@ -1,27 +1,16 @@
-# Backend configuration for OCI Object Storage
+# Backend configuration for OCI Object Storage (native backend)
 # Copy this file to backend.tf and update with your bucket details
 # After running the backend setup (iac/backend/), use the output values
+#
+# Requires Terraform >= 1.12
+# Authentication uses the same credentials as the OCI provider via environment variables:
+#   TF_VAR_tenancy_ocid, TF_VAR_user_ocid, TF_VAR_fingerprint, TF_VAR_private_key, TF_VAR_region
 
 terraform {
-  backend "s3" {
-    bucket   = "terraform-state-jacket-server"  # From backend output
-    key      = "jacket-server/terraform.tfstate"
-    region   = "us-ashburn-1"                    # Your OCI region
-    endpoint = "https://<namespace>.compat.objectstorage.<region>.oraclecloud.com"
-
-    # OCI Object Storage uses S3-compatible API
-    skip_region_validation      = true
-    skip_credentials_validation = true
-    skip_metadata_api_check     = true
-    force_path_style             = true
-
-    # OCI authentication (can also use environment variables)
-    # access_key = "your-oci-user-ocid"
-    # secret_key = "your-oci-api-key-fingerprint"
+  backend "oci" {
+    bucket    = "terraform-state-jacket-server"  # From backend output
+    namespace = "<namespace>"                     # From backend output
+    key       = "jacket-server/terraform.tfstate"
+    region    = "uk-london-1"                    # Your OCI region
   }
 }
-
-# Note: For OCI Object Storage backend, you need to set these environment variables:
-# AWS_ACCESS_KEY_ID=<your-oci-user-ocid>
-# AWS_SECRET_ACCESS_KEY=<your-oci-api-private-key-content>
-# AWS_DEFAULT_REGION=<your-oci-region>
