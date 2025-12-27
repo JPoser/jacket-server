@@ -31,3 +31,6 @@ htmlcov/
 
 # Pre-commit
 .pre-commit-cache/
+
+# Coverage reports
+coverage.xml
