@@ -1,0 +1,131 @@
+name: Terraform
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'iac/**'
+      - '.github/workflows/terraform.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'iac/**'
+      - '.github/workflows/terraform.yml'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  TF_VAR_tenancy_ocid: ${{ secrets.OCI_TENANCY_OCID }}
+  TF_VAR_user_ocid: ${{ secrets.OCI_USER_OCID }}
+  TF_VAR_fingerprint: ${{ secrets.OCI_FINGERPRINT }}
+  TF_VAR_region: ${{ secrets.OCI_REGION }}
+  TF_VAR_compartment_ocid: ${{ secrets.OCI_COMPARTMENT_OCID }}
+  TF_VAR_ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
+  TF_VAR_vcn_name: ${{ vars.VCN_NAME }}
+  TF_VAR_subnet_name: ${{ vars.SUBNET_NAME }}
+
+jobs:
+  terraform-plan:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup OCI Private Key
+        run: |
+          echo "${{ secrets.OCI_PRIVATE_KEY }}" > ${{ runner.temp }}/oci_private_key.pem
+          chmod 600 ${{ runner.temp }}/oci_private_key.pem
+          echo "TF_VAR_private_key_path=${{ runner.temp }}/oci_private_key.pem" >> $GITHUB_ENV
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.12.0
+
+      - name: Terraform Init
+        id: init
+        working-directory: ./iac
+        run: terraform init
+
+      - name: Terraform Format Check
+        id: fmt
+        working-directory: ./iac
+        run: terraform fmt -check
+        continue-on-error: true
+
+      - name: Terraform Validate
+        id: validate
+        working-directory: ./iac
+        run: terraform validate -no-color
+
+      - name: Terraform Plan
+        id: plan
+        working-directory: ./iac
+        run: terraform plan -no-color -out=tfplan
+        continue-on-error: true
+
+      - name: Comment Plan on PR
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const output = `#### Terraform Format and Style 🖌\`${{ steps.fmt.outcome }}\`
+            #### Terraform Initialization ⚙️\`${{ steps.init.outcome }}\`
+            #### Terraform Validation 🤖\`${{ steps.validate.outcome }}\`
+            #### Terraform Plan 📖\`${{ steps.plan.outcome }}\`
+
+            <details><summary>Show Plan</summary>
+
+            \`\`\`terraform
+            ${{ steps.plan.outputs.stdout }}
+            \`\`\`
+
+            </details>
+
+            *Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            })
+
+      - name: Terraform Plan Status
+        if: steps.plan.outcome == 'failure'
+        run: exit 1
+
+  terraform-apply:
+    name: Terraform Apply
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup OCI Private Key
+        run: |
+          echo "${{ secrets.OCI_PRIVATE_KEY }}" > ${{ runner.temp }}/oci_private_key.pem
+          chmod 600 ${{ runner.temp }}/oci_private_key.pem
+          echo "TF_VAR_private_key_path=${{ runner.temp }}/oci_private_key.pem" >> $GITHUB_ENV
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.12.0
+
+      - name: Terraform Init
+        working-directory: ./iac
+        run: terraform init
+
+      - name: Terraform Apply
+        working-directory: ./iac
+        run: terraform apply -auto-approve

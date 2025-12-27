@@ -1,0 +1,16 @@
+# Backend configuration for OCI Object Storage (native backend)
+# Copy this file to backend.tf and update with your bucket details
+# After running the backend setup (iac/backend/), use the output values
+#
+# Requires Terraform >= 1.12
+# Authentication uses the same credentials as the OCI provider via environment variables:
+#   TF_VAR_tenancy_ocid, TF_VAR_user_ocid, TF_VAR_fingerprint, TF_VAR_private_key, TF_VAR_region
+
+terraform {
+  backend "oci" {
+    bucket    = "terraform-state-jacket-server"  # From backend output
+    namespace = "<namespace>"                     # From backend output
+    key       = "jacket-server/terraform.tfstate"
+    region    = "uk-london-1"                    # Your OCI region
+  }
+}

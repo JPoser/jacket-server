@@ -8,8 +8,34 @@ Backend server for controlling an RGB LED jacket via social media mentions. Supp
 - **Advanced color detection**: Supports color names, hex codes (#RRGGBB), and RGB values
 - **RESTful API**: Clean endpoints for ESP32 clients
 - **Extensible architecture**: Easy to add new social media platforms
+- **Infrastructure as Code**: Terraform configuration for Oracle Cloud Infrastructure deployment
 
 ## Setup
+
+### Docker Deployment (Recommended)
+
+The application can be run using Docker Compose for easy deployment:
+
+```bash
+# Build and start the container
+docker compose up -d --build
+
+# View logs
+docker compose logs -f
+
+# Stop the service
+docker compose down
+```
+
+The Docker setup includes:
+- **Gunicorn WSGI server** for production-ready deployment
+- Automatic dependency management with `uv`
+- Health checks
+- Volume mounting for `config.ini` (easy updates without rebuilds)
+- Automatic restarts
+- Configurable workers and threads via environment variables
+
+### Local Development
 
 ### 1. Install Dependencies
 
@@ -62,6 +88,10 @@ python app.py
 ```
 
 The server will start on `http://0.0.0.0:<port>` where `<port>` is the value configured in `config.ini` (default: 5000).
+
+### 4. Deploy to Oracle Cloud Infrastructure (Optional)
+
+See the [Infrastructure as Code documentation](iac/README.md) for deploying to OCI using Terraform.
 
 ## API Endpoints
 
