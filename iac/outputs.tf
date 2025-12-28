@@ -15,7 +15,7 @@ output "instance_ocid" {
 
 output "ssh_command" {
   description = "SSH command to connect to the instance"
-  value       = "ssh ubuntu@${oci_core_instance.jacket_server.public_ip}"
+  value       = var.enable_tailscale ? "ssh ubuntu@jacketserver (via Tailscale)" : "ssh ubuntu@${oci_core_instance.jacket_server.public_ip}"
 }
 
 output "app_url" {
