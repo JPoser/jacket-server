@@ -71,3 +71,16 @@ variable "freeform_tags" {
     Project = "jacket-server"
   }
 }
+
+variable "tailscale_auth_key" {
+  description = "Tailscale auth key for automated node authentication"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "enable_tailscale" {
+  description = "Enable Tailscale VPN for secure SSH access (removes public SSH rule)"
+  type        = bool
+  default     = true
+}

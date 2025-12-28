@@ -88,15 +88,18 @@ resource "oci_core_security_list" "jacket_server_sl" {
   display_name   = "jacket-server-security-list"
   freeform_tags  = var.freeform_tags
 
-  # Allow SSH (configurable source CIDR)
-  ingress_security_rules {
-    protocol    = "6" # TCP
-    source      = var.ssh_source_cidr
-    source_type = "CIDR_BLOCK"
-    description = "SSH access"
-    tcp_options {
-      min = 22
-      max = 22
+  # Allow SSH only when Tailscale is disabled
+  dynamic "ingress_security_rules" {
+    for_each = var.enable_tailscale ? [] : [1]
+    content {
+      protocol    = "6" # TCP
+      source      = var.ssh_source_cidr
+      source_type = "CIDR_BLOCK"
+      description = "SSH access (public - disabled when Tailscale enabled)"
+      tcp_options {
+        min = 22
+        max = 22
+      }
     }
   }
 
@@ -142,7 +145,8 @@ resource "oci_core_instance" "jacket_server" {
   metadata = {
     ssh_authorized_keys = var.ssh_public_key
     user_data = base64encode(templatefile("${path.module}/user_data.sh", {
-      app_port = var.app_port
+      app_port           = var.app_port
+      tailscale_auth_key = var.tailscale_auth_key
     }))
   }
 
