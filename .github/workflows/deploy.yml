@@ -1,0 +1,77 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'iac/**'
+      - '.github/workflows/terraform.yml'
+  workflow_dispatch: # Allow manual triggers
+
+jobs:
+  deploy:
+    name: Deploy to OCI
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Tailscale
+        uses: tailscale/github-action@v2
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+
+      - name: Create config.ini
+        run: |
+          cat > config.ini << 'CONFIGEOF'
+          [server]
+          api_key = ${{ secrets.APP_API_KEY }}
+          port = 5000
+
+          [mastodon]
+          instance_url = ${{ secrets.MASTODON_INSTANCE_URL }}
+          access_token = ${{ secrets.MASTODON_ACCESS_TOKEN }}
+
+          [bluesky]
+          identifier = ${{ secrets.BLUESKY_IDENTIFIER }}
+          password = ${{ secrets.BLUESKY_PASSWORD }}
+          debug = false
+          CONFIGEOF
+
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+      - name: Deploy to Server
+        run: |
+          # Copy config file to server
+          scp -o StrictHostKeyChecking=accept-new config.ini ubuntu@jacketserver:/opt/jacket-server/config.ini
+
+          # SSH and deploy
+          ssh -o StrictHostKeyChecking=accept-new ubuntu@jacketserver << 'DEPLOYEOF'
+          cd /opt/jacket-server
+
+          # Pull latest code (or clone if first deploy)
+          if [ -d .git ]; then
+            git pull origin main
+          else
+            git clone https://github.com/JPoser/jacket-server.git .
+          fi
+
+          # Build and restart
+          docker compose down
+          docker compose up --build -d
+
+          # Show status
+          docker compose ps
+          DEPLOYEOF
+
+      - name: Cleanup config
+        if: always()
+        run: rm -f config.ini
