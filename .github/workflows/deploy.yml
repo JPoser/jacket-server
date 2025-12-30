@@ -50,8 +50,8 @@ jobs:
           echo "=== Tailscale IP ==="
           tailscale ip -4
           echo ""
-          echo "=== Ping jacketserver ==="
-          tailscale ping jacketserver --c 3 || echo "Ping failed"
+          echo "=== Ping jacketserver-1 ==="
+          tailscale ping jacketserver-1 -c 3 || echo "Ping failed"
 
       - name: Setup SSH Key
         run: |
@@ -62,10 +62,10 @@ jobs:
       - name: Deploy to Server
         run: |
           # Copy config file to server
-          scp -o StrictHostKeyChecking=accept-new config.ini ubuntu@jacketserver:/opt/jacket-server/config.ini
+          scp -o StrictHostKeyChecking=accept-new config.ini ubuntu@jacketserver-1:/opt/jacket-server/config.ini
 
           # SSH and deploy
-          ssh -o StrictHostKeyChecking=accept-new ubuntu@jacketserver << 'DEPLOYEOF'
+          ssh -o StrictHostKeyChecking=accept-new ubuntu@jacketserver-1 << 'DEPLOYEOF'
           cd /opt/jacket-server
 
           # Pull latest code (or clone if first deploy)
