@@ -51,7 +51,7 @@ jobs:
           tailscale ip -4
           echo ""
           echo "=== Ping jacketserver ==="
-          tailscale ping jacketserver --c 3 || echo "Ping failed"
+          tailscale ping jacketserver -c 3 || echo "Ping failed"
 
       - name: Setup SSH Key
         run: |
@@ -61,25 +61,27 @@ jobs:
 
       - name: Deploy to Server
         run: |
-          # Copy config file to server
-          scp -o StrictHostKeyChecking=accept-new config.ini ubuntu@jacketserver:/opt/jacket-server/config.ini
-
-          # SSH and deploy
-          ssh -o StrictHostKeyChecking=accept-new ubuntu@jacketserver << 'DEPLOYEOF'
+          # SSH and deploy (clone/pull first, then copy config)
+          ssh -T -o StrictHostKeyChecking=accept-new ubuntu@jacketserver << 'DEPLOYEOF'
           cd /opt/jacket-server
 
           # Pull latest code (or clone if first deploy)
           if [ -d .git ]; then
-            git pull origin main
+            git fetch origin main
+            git reset --hard origin/main
           else
             git clone https://github.com/JPoser/jacket-server.git .
           fi
+          DEPLOYEOF
 
-          # Build and restart
+          # Copy config file to server (after repo is cloned)
+          scp -o StrictHostKeyChecking=accept-new config.ini ubuntu@jacketserver:/opt/jacket-server/config.ini
+
+          # Build and restart containers
+          ssh -T -o StrictHostKeyChecking=accept-new ubuntu@jacketserver << 'DEPLOYEOF'
+          cd /opt/jacket-server
           docker compose down
           docker compose up --build -d
-
-          # Show status
           docker compose ps
           DEPLOYEOF
 
