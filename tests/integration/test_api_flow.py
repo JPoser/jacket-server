@@ -5,19 +5,23 @@ from unittest.mock import Mock
 
 import pytest
 
-import app
+from app import create_app
 
 
 @pytest.fixture
 def client():
     """Create a test client with reset state."""
-    app.app.config["TESTING"] = True
-    app.platforms = {}
-    app.active_platform = None
-    app.api_key = None
-    app.server_port = 5000
-    with app.app.test_client() as client:
-        yield client
+    app = create_app(
+        config_override={
+            "PLATFORMS": {},
+            "ACTIVE_PLATFORM": None,
+            "API_KEY": None,
+            "SERVER_PORT": 5000,
+        }
+    )
+    app.config["TESTING"] = True
+    with app.test_client() as test_client:
+        yield test_client, app
 
 
 class TestColorExtractionFlow:
@@ -25,6 +29,7 @@ class TestColorExtractionFlow:
 
     def test_mastodon_mention_with_hex_color(self, client):
         """Mastodon mention containing #FF0000 returns red color."""
+        test_client, app = client
         mock_platform = Mock()
         mock_platform.get_latest_mentions.return_value = [
             {
@@ -34,10 +39,10 @@ class TestColorExtractionFlow:
                 "created_at": "2024-01-15T10:30:00Z",
             }
         ]
-        app.platforms = {"mastodon": mock_platform}
-        app.active_platform = "mastodon"
+        app.config["PLATFORMS"] = {"mastodon": mock_platform}
+        app.config["ACTIVE_PLATFORM"] = "mastodon"
 
-        response = client.get("/api/v1/color")
+        response = test_client.get("/api/v1/color")
 
         assert response.status_code == 200
         data = json.loads(response.data)
@@ -48,6 +53,7 @@ class TestColorExtractionFlow:
 
     def test_bluesky_mention_with_color_name(self, client):
         """Bluesky mention containing 'blue' returns blue color."""
+        test_client, app = client
         mock_platform = Mock()
         mock_platform.get_latest_mentions.return_value = [
             {
@@ -57,10 +63,10 @@ class TestColorExtractionFlow:
                 "created_at": "2024-01-15T10:30:00Z",
             }
         ]
-        app.platforms = {"bluesky": mock_platform}
-        app.active_platform = "bluesky"
+        app.config["PLATFORMS"] = {"bluesky": mock_platform}
+        app.config["ACTIVE_PLATFORM"] = "bluesky"
 
-        response = client.get("/api/v1/color")
+        response = test_client.get("/api/v1/color")
 
         assert response.status_code == 200
         data = json.loads(response.data)
@@ -70,6 +76,7 @@ class TestColorExtractionFlow:
 
     def test_color_priority_hex_over_name(self, client):
         """Hex color takes priority over color name in same mention."""
+        test_client, app = client
         mock_platform = Mock()
         mock_platform.get_latest_mentions.return_value = [
             {
@@ -79,10 +86,10 @@ class TestColorExtractionFlow:
                 "created_at": "2024-01-15T10:30:00Z",
             }
         ]
-        app.platforms = {"mastodon": mock_platform}
-        app.active_platform = "mastodon"
+        app.config["PLATFORMS"] = {"mastodon": mock_platform}
+        app.config["ACTIVE_PLATFORM"] = "mastodon"
 
-        response = client.get("/api/v1/color")
+        response = test_client.get("/api/v1/color")
 
         assert response.status_code == 200
         data = json.loads(response.data)
@@ -91,6 +98,7 @@ class TestColorExtractionFlow:
 
     def test_rgb_format_extraction(self, client):
         """RGB format (rgb(255, 128, 0)) is correctly extracted."""
+        test_client, app = client
         mock_platform = Mock()
         mock_platform.get_latest_mentions.return_value = [
             {
@@ -100,10 +108,10 @@ class TestColorExtractionFlow:
                 "created_at": "2024-01-15T10:30:00Z",
             }
         ]
-        app.platforms = {"mastodon": mock_platform}
-        app.active_platform = "mastodon"
+        app.config["PLATFORMS"] = {"mastodon": mock_platform}
+        app.config["ACTIVE_PLATFORM"] = "mastodon"
 
-        response = client.get("/api/v1/color")
+        response = test_client.get("/api/v1/color")
 
         assert response.status_code == 200
         data = json.loads(response.data)
@@ -111,6 +119,7 @@ class TestColorExtractionFlow:
 
     def test_no_color_returns_white_default(self, client):
         """Mention without color info returns white default."""
+        test_client, app = client
         mock_platform = Mock()
         mock_platform.get_latest_mentions.return_value = [
             {
@@ -120,10 +129,10 @@ class TestColorExtractionFlow:
                 "created_at": "2024-01-15T10:30:00Z",
             }
         ]
-        app.platforms = {"mastodon": mock_platform}
-        app.active_platform = "mastodon"
+        app.config["PLATFORMS"] = {"mastodon": mock_platform}
+        app.config["ACTIVE_PLATFORM"] = "mastodon"
 
-        response = client.get("/api/v1/color")
+        response = test_client.get("/api/v1/color")
 
         assert response.status_code == 200
         data = json.loads(response.data)
@@ -133,6 +142,7 @@ class TestColorExtractionFlow:
 
     def test_platform_switching(self, client):
         """Can switch between platforms via query param."""
+        test_client, app = client
         mock_mastodon = Mock()
         mock_mastodon.get_latest_mentions.return_value = [
             {
@@ -153,18 +163,18 @@ class TestColorExtractionFlow:
             }
         ]
 
-        app.platforms = {"mastodon": mock_mastodon, "bluesky": mock_bluesky}
-        app.active_platform = "mastodon"
+        app.config["PLATFORMS"] = {"mastodon": mock_mastodon, "bluesky": mock_bluesky}
+        app.config["ACTIVE_PLATFORM"] = "mastodon"
 
         # Request from Mastodon
-        response = client.get("/api/v1/color?platform=mastodon")
+        response = test_client.get("/api/v1/color?platform=mastodon")
         assert response.status_code == 200
         data = json.loads(response.data)
         assert data["color"]["name"] == "red"
         assert data["platform"] == "mastodon"
 
         # Request from Bluesky
-        response = client.get("/api/v1/color?platform=bluesky")
+        response = test_client.get("/api/v1/color?platform=bluesky")
         assert response.status_code == 200
         data = json.loads(response.data)
         assert data["color"]["name"] == "blue"
@@ -172,6 +182,7 @@ class TestColorExtractionFlow:
 
     def test_multiple_mentions_first_color_wins(self, client):
         """When multiple mentions exist, first one with color is used."""
+        test_client, app = client
         mock_platform = Mock()
         mock_platform.get_latest_mentions.return_value = [
             {
@@ -193,10 +204,10 @@ class TestColorExtractionFlow:
                 "created_at": "2024-01-15T10:28:00Z",
             },
         ]
-        app.platforms = {"mastodon": mock_platform}
-        app.active_platform = "mastodon"
+        app.config["PLATFORMS"] = {"mastodon": mock_platform}
+        app.config["ACTIVE_PLATFORM"] = "mastodon"
 
-        response = client.get("/api/v1/color")
+        response = test_client.get("/api/v1/color")
 
         assert response.status_code == 200
         data = json.loads(response.data)
@@ -210,6 +221,7 @@ class TestMentionsFlow:
 
     def test_mastodon_mentions_strips_html(self, client):
         """HTML tags are stripped from Mastodon content."""
+        test_client, app = client
         mock_platform = Mock()
         mock_platform.get_latest_mentions.return_value = [
             {
@@ -219,10 +231,10 @@ class TestMentionsFlow:
                 "created_at": "2024-01-15T10:30:00Z",
             }
         ]
-        app.platforms = {"mastodon": mock_platform}
-        app.active_platform = "mastodon"
+        app.config["PLATFORMS"] = {"mastodon": mock_platform}
+        app.config["ACTIVE_PLATFORM"] = "mastodon"
 
-        response = client.get("/api/v1/mentions")
+        response = test_client.get("/api/v1/mentions")
 
         assert response.status_code == 200
         data = json.loads(response.data)
@@ -231,28 +243,30 @@ class TestMentionsFlow:
 
     def test_mentions_respects_limit(self, client):
         """Limit parameter is passed to platform."""
+        test_client, app = client
         mock_platform = Mock()
         mock_platform.get_latest_mentions.return_value = []
-        app.platforms = {"mastodon": mock_platform}
-        app.active_platform = "mastodon"
+        app.config["PLATFORMS"] = {"mastodon": mock_platform}
+        app.config["ACTIVE_PLATFORM"] = "mastodon"
 
-        response = client.get("/api/v1/mentions?limit=5")
+        response = test_client.get("/api/v1/mentions?limit=5")
 
         assert response.status_code == 200
         mock_platform.get_latest_mentions.assert_called_once_with(limit=5)
 
     def test_mentions_returns_count(self, client):
         """Response includes count of mentions."""
+        test_client, app = client
         mock_platform = Mock()
         mock_platform.get_latest_mentions.return_value = [
             {"text": "One", "id": "1", "account": "a", "created_at": "2024-01-01"},
             {"text": "Two", "id": "2", "account": "b", "created_at": "2024-01-01"},
             {"text": "Three", "id": "3", "account": "c", "created_at": "2024-01-01"},
         ]
-        app.platforms = {"mastodon": mock_platform}
-        app.active_platform = "mastodon"
+        app.config["PLATFORMS"] = {"mastodon": mock_platform}
+        app.config["ACTIVE_PLATFORM"] = "mastodon"
 
-        response = client.get("/api/v1/mentions")
+        response = test_client.get("/api/v1/mentions")
 
         assert response.status_code == 200
         data = json.loads(response.data)
@@ -265,12 +279,13 @@ class TestPlatformInitialization:
 
     def test_multiple_platforms_available(self, client):
         """Multiple platforms can be configured and listed."""
+        test_client, app = client
         mock_mastodon = Mock()
         mock_bluesky = Mock()
-        app.platforms = {"mastodon": mock_mastodon, "bluesky": mock_bluesky}
-        app.active_platform = "mastodon"
+        app.config["PLATFORMS"] = {"mastodon": mock_mastodon, "bluesky": mock_bluesky}
+        app.config["ACTIVE_PLATFORM"] = "mastodon"
 
-        response = client.get("/api/v1/platforms")
+        response = test_client.get("/api/v1/platforms")
 
         assert response.status_code == 200
         data = json.loads(response.data)
@@ -280,10 +295,11 @@ class TestPlatformInitialization:
 
     def test_no_platforms_configured(self, client):
         """Graceful handling when no platforms are configured."""
-        app.platforms = {}
-        app.active_platform = None
+        test_client, app = client
+        app.config["PLATFORMS"] = {}
+        app.config["ACTIVE_PLATFORM"] = None
 
-        response = client.get("/api/v1/color")
+        response = test_client.get("/api/v1/color")
 
         assert response.status_code == 400
         data = json.loads(response.data)
@@ -295,31 +311,33 @@ class TestAuthenticationFlow:
 
     def test_auth_required_when_key_configured(self, client):
         """API key is required when configured."""
-        app.api_key = "secret-key"
-        app.platforms = {"mastodon": Mock()}
-        app.active_platform = "mastodon"
+        test_client, app = client
+        app.config["API_KEY"] = "secret-key"
+        app.config["PLATFORMS"] = {"mastodon": Mock()}
+        app.config["ACTIVE_PLATFORM"] = "mastodon"
 
         # Without key
-        response = client.get("/api/v1/color")
+        response = test_client.get("/api/v1/color")
         assert response.status_code == 401
 
         # With wrong key
-        response = client.get("/api/v1/color", headers={"X-API-Key": "wrong"})
+        response = test_client.get("/api/v1/color", headers={"X-API-Key": "wrong"})
         assert response.status_code == 401
 
         # With correct key
-        app.platforms["mastodon"].get_latest_mentions.return_value = []
-        response = client.get("/api/v1/color", headers={"X-API-Key": "secret-key"})
+        app.config["PLATFORMS"]["mastodon"].get_latest_mentions.return_value = []
+        response = test_client.get("/api/v1/color", headers={"X-API-Key": "secret-key"})
         assert response.status_code == 200
 
     def test_auth_bypassed_when_no_key_configured(self, client):
         """Authentication is bypassed when no API key is configured."""
-        app.api_key = None
+        test_client, app = client
+        app.config["API_KEY"] = None
         mock_platform = Mock()
         mock_platform.get_latest_mentions.return_value = []
-        app.platforms = {"mastodon": mock_platform}
-        app.active_platform = "mastodon"
+        app.config["PLATFORMS"] = {"mastodon": mock_platform}
+        app.config["ACTIVE_PLATFORM"] = "mastodon"
 
-        response = client.get("/api/v1/color")
+        response = test_client.get("/api/v1/color")
 
         assert response.status_code == 200

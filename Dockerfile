@@ -24,4 +24,4 @@ EXPOSE 5000
 
 # Run the application with Gunicorn
 # Workers and threads can be overridden via environment variables
-CMD ["sh", "-c", "uv run gunicorn --bind 0.0.0.0:5000 --workers ${GUNICORN_WORKERS:-2} --threads ${GUNICORN_THREADS:-2} --timeout ${GUNICORN_TIMEOUT:-120} --access-logfile - --error-logfile - --capture-output app:app"]
+CMD ["sh", "-c", "uv run gunicorn --bind 0.0.0.0:5000 --workers ${GUNICORN_WORKERS:-2} --threads ${GUNICORN_THREADS:-2} --timeout ${GUNICORN_TIMEOUT:-120} --access-logfile - --error-logfile - --capture-output 'app:create_app()'"]

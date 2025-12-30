@@ -1,25 +1,15 @@
 """Jacket Server - Backend for RGB LED jacket controlled via social media mentions."""
 
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, current_app
 from flask_cors import CORS
 from functools import wraps
 import configparser
 import os
-from typing import Optional, Dict
+from typing import Optional
 
 from platforms.mastodon import MastodonPlatform
 from platforms.bluesky import BlueskyPlatform
 from color_parser import extract_color, get_default_color
-
-
-app = Flask(__name__)
-CORS(app)  # Enable CORS for ESP32 client
-
-# Global platform instances
-platforms: Dict[str, any] = {}
-active_platform: Optional[str] = None
-api_key: Optional[str] = None
-server_port: int = 5000
 
 
 def load_config():
@@ -35,46 +25,13 @@ def load_config():
     return config
 
 
-def load_api_key():
-    """Load API key from configuration."""
-    global api_key
-    config = load_config()
-
-    if "server" in config:
-        api_key = config["server"].get("api_key")
-        if api_key:
-            print("✓ API key loaded (authentication enabled)")
-        else:
-            print("⚠ No API key configured (authentication disabled)")
-    else:
-        print("⚠ No API key configured (authentication disabled)")
-
-
-def load_server_config():
-    """Load server configuration (port, etc.) from config file."""
-    global server_port
-    config = load_config()
-
-    if "server" in config:
-        port_str = config["server"].get("port")
-        if port_str:
-            try:
-                server_port = int(port_str)
-                print(f"✓ Server port configured: {server_port}")
-            except ValueError:
-                print(f"⚠ Invalid port '{port_str}', using default: 5000")
-                server_port = 5000
-        else:
-            print("⚠ No port configured, using default: 5000")
-    else:
-        print("⚠ No server config found, using default port: 5000")
-
-
 def require_api_key(f):
     """Decorator to require API key authentication."""
 
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        api_key = current_app.config.get("API_KEY")
+
         # If no API key is configured, allow access (backward compatibility)
         if not api_key:
             return f(*args, **kwargs)
@@ -95,11 +52,79 @@ def require_api_key(f):
     return decorated_function
 
 
-def initialize_platforms():
-    """Initialize available social media platforms from configuration."""
-    global platforms, active_platform
+def create_app(config_override: Optional[dict] = None) -> Flask:
+    """
+    Application factory for creating Flask app instances.
 
+    Args:
+        config_override: Optional dictionary to override configuration values.
+                        Useful for testing.
+
+    Returns:
+        Configured Flask application instance.
+    """
+    app = Flask(__name__)
+    CORS(app)  # Enable CORS for ESP32 client
+
+    # Initialize app config with defaults
+    app.config["PLATFORMS"] = {}
+    app.config["ACTIVE_PLATFORM"] = None
+    app.config["API_KEY"] = None
+    app.config["SERVER_PORT"] = 5000
+
+    # Load configuration
     config = load_config()
+
+    # Apply config overrides if provided (for testing)
+    if config_override:
+        app.config.update(config_override)
+    else:
+        # Load from config.ini
+        _load_api_key(app, config)
+        _load_server_config(app, config)
+        _initialize_platforms(app, config)
+
+    # Register routes
+    _register_routes(app)
+
+    print(f"Server ready with {len(app.config['PLATFORMS'])} platform(s) available")
+
+    return app
+
+
+def _load_api_key(app: Flask, config: configparser.ConfigParser):
+    """Load API key from configuration."""
+    if "server" in config:
+        api_key = config["server"].get("api_key")
+        if api_key:
+            app.config["API_KEY"] = api_key
+            print("✓ API key loaded (authentication enabled)")
+        else:
+            print("⚠ No API key configured (authentication disabled)")
+    else:
+        print("⚠ No API key configured (authentication disabled)")
+
+
+def _load_server_config(app: Flask, config: configparser.ConfigParser):
+    """Load server configuration (port, etc.) from config file."""
+    if "server" in config:
+        port_str = config["server"].get("port")
+        if port_str:
+            try:
+                app.config["SERVER_PORT"] = int(port_str)
+                print(f"✓ Server port configured: {app.config['SERVER_PORT']}")
+            except ValueError:
+                print(f"⚠ Invalid port '{port_str}', using default: 5000")
+        else:
+            print("⚠ No port configured, using default: 5000")
+    else:
+        print("⚠ No server config found, using default port: 5000")
+
+
+def _initialize_platforms(app: Flask, config: configparser.ConfigParser):
+    """Initialize available social media platforms from configuration."""
+    platforms = {}
+    active_platform = None
 
     # Initialize Mastodon if configured
     if "mastodon" in config:
@@ -135,167 +160,170 @@ def initialize_platforms():
     if not platforms:
         print("Warning: No platforms initialized. Please check your config.ini")
 
-
-@app.route("/", methods=["GET"])
-def index():
-    """Root endpoint."""
-    return jsonify(
-        {
-            "message": "Welcome to Jacket Server",
-            "version": "2.0",
-            "available_platforms": list(platforms.keys()),
-            "active_platform": active_platform,
-        }
-    )
+    app.config["PLATFORMS"] = platforms
+    app.config["ACTIVE_PLATFORM"] = active_platform
 
 
-@app.route("/api/v1/color", methods=["GET"])
-@require_api_key
-def get_color():
-    """
-    Get the latest color from social media mentions.
+def _register_routes(app: Flask):
+    """Register all application routes."""
 
-    Query parameters:
-        platform: Optional platform name (mastodon, bluesky). Defaults to active platform.
-        limit: Number of mentions to check (default: 10)
-    """
-    global active_platform
-
-    # Get platform from query parameter or use active platform
-    platform_name = request.args.get("platform", active_platform)
-    limit = int(request.args.get("limit", 10))
-
-    if not platform_name or platform_name not in platforms:
+    @app.route("/", methods=["GET"])
+    def index():
+        """Root endpoint."""
         return jsonify(
             {
-                "error": f'Platform "{platform_name}" not available',
-                "available_platforms": list(platforms.keys()),
+                "message": "Welcome to Jacket Server",
+                "version": "2.0",
+                "available_platforms": list(current_app.config["PLATFORMS"].keys()),
+                "active_platform": current_app.config["ACTIVE_PLATFORM"],
             }
-        ), 400
+        )
 
-    platform = platforms[platform_name]
+    @app.route("/api/v1/color", methods=["GET"])
+    @require_api_key
+    def get_color():
+        """
+        Get the latest color from social media mentions.
 
-    try:
-        mentions = platform.get_latest_mentions(limit=limit)
+        Query parameters:
+            platform: Optional platform name (mastodon, bluesky). Defaults to active platform.
+            limit: Number of mentions to check (default: 10)
+        """
+        platforms = current_app.config["PLATFORMS"]
+        active_platform = current_app.config["ACTIVE_PLATFORM"]
 
-        if not mentions:
+        # Get platform from query parameter or use active platform
+        platform_name = request.args.get("platform", active_platform)
+        limit = int(request.args.get("limit", 10))
+
+        if not platform_name or platform_name not in platforms:
             return jsonify(
                 {
-                    "color": get_default_color(),
-                    "message": "No mentions found",
-                    "platform": platform_name,
+                    "error": f'Platform "{platform_name}" not available',
+                    "available_platforms": list(platforms.keys()),
                 }
-            )
+            ), 400
 
-        # Check each mention for color information
-        for mention in mentions:
-            text = mention.get("text", "")
-            # Remove HTML tags if present (Mastodon returns HTML)
-            import re
+        platform = platforms[platform_name]
 
-            text = re.sub(r"<[^>]+>", "", text)
+        try:
+            mentions = platform.get_latest_mentions(limit=limit)
 
-            color = extract_color(text)
-            if color:
+            if not mentions:
                 return jsonify(
                     {
-                        "color": color,
-                        "mention": {
-                            "text": text,
-                            "id": mention.get("id"),
-                            "account": mention.get("account", ""),
-                            "created_at": mention.get("created_at"),
-                        },
+                        "color": get_default_color(),
+                        "message": "No mentions found",
                         "platform": platform_name,
                     }
                 )
 
-        # No color found in any mention
-        return jsonify(
-            {
-                "color": get_default_color(),
-                "message": "No color found in recent mentions",
-                "platform": platform_name,
-                "mentions_checked": len(mentions),
-            }
-        )
+            # Check each mention for color information
+            for mention in mentions:
+                text = mention.get("text", "")
+                # Remove HTML tags if present (Mastodon returns HTML)
+                import re
 
-    except Exception as e:
-        return jsonify({"error": str(e), "platform": platform_name}), 500
+                text = re.sub(r"<[^>]+>", "", text)
 
+                color = extract_color(text)
+                if color:
+                    return jsonify(
+                        {
+                            "color": color,
+                            "mention": {
+                                "text": text,
+                                "id": mention.get("id"),
+                                "account": mention.get("account", ""),
+                                "created_at": mention.get("created_at"),
+                            },
+                            "platform": platform_name,
+                        }
+                    )
 
-@app.route("/api/v1/mentions", methods=["GET"])
-@require_api_key
-def get_mentions():
-    """
-    Get recent mentions without color extraction.
-
-    Query parameters:
-        platform: Optional platform name (mastodon, bluesky). Defaults to active platform.
-        limit: Number of mentions to fetch (default: 10)
-    """
-    global active_platform
-
-    platform_name = request.args.get("platform", active_platform)
-    limit = int(request.args.get("limit", 10))
-
-    if not platform_name or platform_name not in platforms:
-        return jsonify(
-            {
-                "error": f'Platform "{platform_name}" not available',
-                "available_platforms": list(platforms.keys()),
-            }
-        ), 400
-
-    platform = platforms[platform_name]
-
-    try:
-        mentions = platform.get_latest_mentions(limit=limit)
-
-        # Clean HTML from Mastodon mentions
-        import re
-
-        cleaned_mentions = []
-        for mention in mentions:
-            text = mention.get("text", "")
-            text = re.sub(r"<[^>]+>", "", text)
-            cleaned_mentions.append(
+            # No color found in any mention
+            return jsonify(
                 {
-                    "text": text,
-                    "id": mention.get("id"),
-                    "account": mention.get("account", ""),
-                    "created_at": mention.get("created_at"),
+                    "color": get_default_color(),
+                    "message": "No color found in recent mentions",
+                    "platform": platform_name,
+                    "mentions_checked": len(mentions),
                 }
             )
 
+        except Exception as e:
+            return jsonify({"error": str(e), "platform": platform_name}), 500
+
+    @app.route("/api/v1/mentions", methods=["GET"])
+    @require_api_key
+    def get_mentions():
+        """
+        Get recent mentions without color extraction.
+
+        Query parameters:
+            platform: Optional platform name (mastodon, bluesky). Defaults to active platform.
+            limit: Number of mentions to fetch (default: 10)
+        """
+        platforms = current_app.config["PLATFORMS"]
+        active_platform = current_app.config["ACTIVE_PLATFORM"]
+
+        platform_name = request.args.get("platform", active_platform)
+        limit = int(request.args.get("limit", 10))
+
+        if not platform_name or platform_name not in platforms:
+            return jsonify(
+                {
+                    "error": f'Platform "{platform_name}" not available',
+                    "available_platforms": list(platforms.keys()),
+                }
+            ), 400
+
+        platform = platforms[platform_name]
+
+        try:
+            mentions = platform.get_latest_mentions(limit=limit)
+
+            # Clean HTML from Mastodon mentions
+            import re
+
+            cleaned_mentions = []
+            for mention in mentions:
+                text = mention.get("text", "")
+                text = re.sub(r"<[^>]+>", "", text)
+                cleaned_mentions.append(
+                    {
+                        "text": text,
+                        "id": mention.get("id"),
+                        "account": mention.get("account", ""),
+                        "created_at": mention.get("created_at"),
+                    }
+                )
+
+            return jsonify(
+                {
+                    "mentions": cleaned_mentions,
+                    "count": len(cleaned_mentions),
+                    "platform": platform_name,
+                }
+            )
+
+        except Exception as e:
+            return jsonify({"error": str(e), "platform": platform_name}), 500
+
+    @app.route("/api/v1/platforms", methods=["GET"])
+    @require_api_key
+    def list_platforms():
+        """List available and active platforms."""
         return jsonify(
             {
-                "mentions": cleaned_mentions,
-                "count": len(cleaned_mentions),
-                "platform": platform_name,
+                "available_platforms": list(current_app.config["PLATFORMS"].keys()),
+                "active_platform": current_app.config["ACTIVE_PLATFORM"],
             }
         )
 
-    except Exception as e:
-        return jsonify({"error": str(e), "platform": platform_name}), 500
 
-
-@app.route("/api/v1/platforms", methods=["GET"])
-@require_api_key
-def list_platforms():
-    """List available and active platforms."""
-    return jsonify(
-        {
-            "available_platforms": list(platforms.keys()),
-            "active_platform": active_platform,
-        }
-    )
-
-
+# For backward compatibility when running directly
 if __name__ == "__main__":
     print("Initializing Jacket Server...")
-    load_api_key()
-    load_server_config()
-    initialize_platforms()
-    print(f"Server starting with {len(platforms)} platform(s) available")
-    app.run(debug=True, host="0.0.0.0", port=server_port)
+    app = create_app()
+    app.run(debug=True, host="0.0.0.0", port=app.config["SERVER_PORT"])
