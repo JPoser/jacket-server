@@ -107,13 +107,17 @@ def docker_container(request):
 @pytest.fixture
 def integration_client():
     """Create a test client with reset state for integration tests."""
-    import app
+    from app import create_app
 
-    app.app.config["TESTING"] = True
-    app.platforms = {}
-    app.active_platform = None
-    app.api_key = None
-    app.server_port = 5000
+    app = create_app(
+        config_override={
+            "PLATFORMS": {},
+            "ACTIVE_PLATFORM": None,
+            "API_KEY": None,
+            "SERVER_PORT": 5000,
+        }
+    )
+    app.config["TESTING"] = True
 
-    with app.app.test_client() as client:
-        yield client
+    with app.test_client() as client:
+        yield client, app
