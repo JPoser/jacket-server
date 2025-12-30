@@ -42,6 +42,17 @@ jobs:
           debug = false
           CONFIGEOF
 
+      - name: Debug Tailscale Status
+        run: |
+          echo "=== Tailscale Status ==="
+          tailscale status
+          echo ""
+          echo "=== Tailscale IP ==="
+          tailscale ip -4
+          echo ""
+          echo "=== Ping jacketserver ==="
+          tailscale ping jacketserver --c 3 || echo "Ping failed"
+
       - name: Setup SSH Key
         run: |
           mkdir -p ~/.ssh
