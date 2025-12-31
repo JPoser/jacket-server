@@ -6,6 +6,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Jacket Server is a Python/Flask backend that bridges social media platforms (Mastodon, Bluesky) with an ESP32-controlled RGB LED jacket. It extracts color mentions from social media posts and exposes them via REST API.
 
+## Git Workflow
+
+**Always use feature branches and pull requests** - never push directly to `main`.
+
+1. Create a feature branch: `git checkout -b feature/description`
+2. Make changes and commit
+3. Push branch: `git push -u origin branch-name`
+4. Output PR details (title, summary, test plan) for manual PR creation
+5. Wait for review/approval before merging
+
 ## Commands
 
 ### Development
