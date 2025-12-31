@@ -32,6 +32,28 @@ COLOR_MAP = {
     "grey": (128, 128, 128),
 }
 
+# Supported effect names for LED transitions
+EFFECTS = {
+    # Transition effects
+    "fade",
+    "wipe_down",
+    "wipe_up",
+    "wipe_left",
+    "wipe_right",
+    "chase_down",
+    "chase_up",
+    "chase_spiral",
+    "dissolve",
+    "expand",
+    # Buffer effects
+    "colour_stack",
+    "colour_rain",
+    "colour_trail",
+    "colour_waterfall",
+    "colour_wave",
+    "colour_spiral",
+}
+
 
 def parse_hex_color(text: str) -> Optional[Tuple[int, int, int]]:
     """Extract hex color code from text (e.g., #FF0000, #ff00ff)."""
@@ -115,3 +137,29 @@ def extract_color(text: str) -> Optional[dict]:
 def get_default_color() -> dict:
     """Return default white color."""
     return {"name": "white", "rgb": (255, 255, 255), "hex": "#ffffff"}
+
+
+def extract_effect(text: str) -> Optional[str]:
+    """
+    Extract effect name from text.
+
+    Searches for effect keywords (case-insensitive). Underscores can be
+    replaced with spaces (e.g., "wipe down" matches "wipe_down").
+
+    Returns:
+        Effect name if found, or None if no effect found
+    """
+    if not text:
+        return None
+
+    text_lower = text.lower()
+
+    # Check for effects (longer names first to avoid partial matches)
+    sorted_effects = sorted(EFFECTS, key=len, reverse=True)
+
+    for effect in sorted_effects:
+        # Match with underscores or spaces
+        if effect in text_lower or effect.replace("_", " ") in text_lower:
+            return effect
+
+    return None

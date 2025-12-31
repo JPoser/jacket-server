@@ -121,6 +121,77 @@ class TestColorEndpoint:
         assert "color" in data
         assert data["color"]["name"] == "red"
         assert "mention" in data
+        assert "effect" in data
+        assert data["effect"] is None  # No effect in this mention
+
+    def test_color_endpoint_with_effect(self, client):
+        """Test color endpoint with a mention containing both color and effect."""
+        test_client, app = client
+        app.config["API_KEY"] = None
+        mock_platform = Mock()
+        mock_platform.get_latest_mentions.return_value = [
+            {
+                "text": "fade to red!",
+                "id": "123",
+                "account": "testuser",
+                "created_at": "2024-01-01T00:00:00Z",
+            }
+        ]
+        app.config["PLATFORMS"] = {"mastodon": mock_platform}
+        app.config["ACTIVE_PLATFORM"] = "mastodon"
+
+        response = test_client.get("/api/v1/color")
+
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert "color" in data
+        assert data["color"]["name"] == "red"
+        assert "effect" in data
+        assert data["effect"] == "fade"
+
+    def test_color_endpoint_with_underscore_effect(self, client):
+        """Test color endpoint with effect containing underscore."""
+        test_client, app = client
+        app.config["API_KEY"] = None
+        mock_platform = Mock()
+        mock_platform.get_latest_mentions.return_value = [
+            {
+                "text": "wipe_down to blue!",
+                "id": "123",
+                "account": "testuser",
+                "created_at": "2024-01-01T00:00:00Z",
+            }
+        ]
+        app.config["PLATFORMS"] = {"mastodon": mock_platform}
+        app.config["ACTIVE_PLATFORM"] = "mastodon"
+
+        response = test_client.get("/api/v1/color")
+
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert data["effect"] == "wipe_down"
+
+    def test_color_endpoint_with_space_effect(self, client):
+        """Test color endpoint with effect containing space instead of underscore."""
+        test_client, app = client
+        app.config["API_KEY"] = None
+        mock_platform = Mock()
+        mock_platform.get_latest_mentions.return_value = [
+            {
+                "text": "colour spiral to green!",
+                "id": "123",
+                "account": "testuser",
+                "created_at": "2024-01-01T00:00:00Z",
+            }
+        ]
+        app.config["PLATFORMS"] = {"mastodon": mock_platform}
+        app.config["ACTIVE_PLATFORM"] = "mastodon"
+
+        response = test_client.get("/api/v1/color")
+
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert data["effect"] == "colour_spiral"
 
     def test_color_endpoint_no_color_found(self, client):
         """Test color endpoint when no color is found."""
@@ -144,7 +215,27 @@ class TestColorEndpoint:
         data = json.loads(response.data)
         assert "color" in data
         assert data["color"]["name"] == "white"  # Default color
+        assert "effect" in data
+        assert data["effect"] is None
         assert "message" in data
+
+    def test_color_endpoint_no_mentions(self, client):
+        """Test color endpoint when no mentions are found."""
+        test_client, app = client
+        app.config["API_KEY"] = None
+        mock_platform = Mock()
+        mock_platform.get_latest_mentions.return_value = []
+        app.config["PLATFORMS"] = {"mastodon": mock_platform}
+        app.config["ACTIVE_PLATFORM"] = "mastodon"
+
+        response = test_client.get("/api/v1/color")
+
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert "color" in data
+        assert data["color"]["name"] == "white"
+        assert "effect" in data
+        assert data["effect"] is None
 
     def test_color_endpoint_platform_parameter(self, client):
         """Test color endpoint with platform parameter."""

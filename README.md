@@ -6,6 +6,7 @@ Backend server for controlling an RGB LED jacket via social media mentions. Supp
 
 - **Multi-platform support**: Mastodon and Bluesky integrations
 - **Advanced color detection**: Supports color names, hex codes (#RRGGBB), and RGB values
+- **LED transition effects**: Supports 16 transition and buffer effects (fade, wipe, chase, dissolve, etc.)
 - **RESTful API**: Clean endpoints for ESP32 clients
 - **Extensible architecture**: Easy to add new social media platforms
 - **Infrastructure as Code**: Terraform configuration for Oracle Cloud Infrastructure deployment
@@ -130,8 +131,9 @@ Get the latest color from social media mentions.
     "rgb": [255, 0, 0],
     "hex": "#ff0000"
   },
+  "effect": "fade",
   "mention": {
-    "text": "Make it red!",
+    "text": "fade to red!",
     "id": "12345",
     "account": "username",
     "created_at": "2024-01-01T00:00:00Z"
@@ -139,6 +141,8 @@ Get the latest color from social media mentions.
   "platform": "mastodon"
 }
 ```
+
+The `effect` field will be `null` if no effect is detected in the mention text.
 
 ### `GET /api/v1/mentions`
 
@@ -171,6 +175,24 @@ The server detects colors in multiple formats:
 3. **RGB Format**: `rgb(255,0,0)`, `rgb(0, 255, 0)`
 
 If no color is found, the server returns white (`#ffffff`) as the default.
+
+## Effect Detection
+
+The server also detects LED transition effects from mention text. Effects can be specified with underscores or spaces (e.g., "wipe down" or "wipe_down").
+
+**Transition Effects:**
+- `fade`, `dissolve`, `expand`
+- `wipe_down`, `wipe_up`, `wipe_left`, `wipe_right`
+- `chase_down`, `chase_up`, `chase_spiral`
+
+**Buffer Effects:**
+- `colour_stack`, `colour_rain`, `colour_trail`
+- `colour_waterfall`, `colour_wave`, `colour_spiral`
+
+Example mentions:
+- "fade to red" → color: red, effect: fade
+- "wipe down blue" → color: blue, effect: wipe_down
+- "colour spiral green" → color: green, effect: colour_spiral
 
 ## ESP32 Integration
 
@@ -348,6 +370,7 @@ pytest
 
 The test suite covers:
 - **Color parsing** - Hex codes, RGB values, and color names
+- **Effect parsing** - All 16 transition and buffer effects
 - **Platform integrations** - Mastodon and Bluesky platform implementations
 - **API endpoints** - All REST endpoints with authentication
 - **Configuration loading** - API keys, ports, and platform settings

@@ -51,7 +51,7 @@ New platforms extend `SocialPlatform` and implement `initialize()` and `get_late
 
 ### Core Modules
 - `app.py`: Flask application with API endpoints, authentication decorator, platform management
-- `color_parser.py`: Color detection supporting hex (#RRGGBB), RGB (rgb(r,g,b)), and named colors
+- `color_parser.py`: Color and effect detection supporting hex (#RRGGBB), RGB (rgb(r,g,b)), named colors, and LED transition effects
 
 ### API Endpoints
 - `GET /` - Server status (no auth)
@@ -69,6 +69,13 @@ Copy `config.example.ini` to `config.ini`. Sections: `[server]`, `[mastodon]`, `
 2. RGB format (rgb(r,g,b))
 3. Named colors (20+ supported)
 4. Default: white (#ffffff)
+
+### Effect Detection
+The API also extracts LED transition effects from mention text. Supported effects:
+- **Transition**: fade, wipe_down, wipe_up, wipe_left, wipe_right, chase_down, chase_up, chase_spiral, dissolve, expand
+- **Buffer**: colour_stack, colour_rain, colour_trail, colour_waterfall, colour_wave, colour_spiral
+
+Effects can be specified with underscores or spaces (e.g., "wipe down" matches "wipe_down").
 
 ## Infrastructure
 Terraform configs in `iac/` deploy to Oracle Cloud Infrastructure free tier.

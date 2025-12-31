@@ -5,7 +5,9 @@ from color_parser import (
     parse_rgb_color,
     find_color_name,
     extract_color,
+    extract_effect,
     get_default_color,
+    EFFECTS,
 )
 
 
@@ -214,3 +216,99 @@ class TestGetDefaultColor:
         assert "hex" in result
         assert isinstance(result["rgb"], tuple)
         assert len(result["rgb"]) == 3
+
+
+class TestExtractEffect:
+    """Tests for extract_effect function."""
+
+    def test_extract_fade(self):
+        """Test extracting fade effect."""
+        result = extract_effect("fade to red")
+        assert result == "fade"
+
+    def test_extract_wipe_down(self):
+        """Test extracting wipe_down effect."""
+        result = extract_effect("wipe_down to blue")
+        assert result == "wipe_down"
+
+    def test_extract_wipe_down_with_space(self):
+        """Test extracting wipe down with space instead of underscore."""
+        result = extract_effect("wipe down to blue")
+        assert result == "wipe_down"
+
+    def test_extract_case_insensitive(self):
+        """Test that effect extraction is case insensitive."""
+        result = extract_effect("FADE to red")
+        assert result == "fade"
+
+    def test_extract_colour_spiral(self):
+        """Test extracting colour_spiral effect."""
+        result = extract_effect("use colour_spiral effect")
+        assert result == "colour_spiral"
+
+    def test_extract_colour_spiral_with_space(self):
+        """Test extracting colour spiral with space."""
+        result = extract_effect("use colour spiral effect")
+        assert result == "colour_spiral"
+
+    def test_no_effect_found(self):
+        """Test text with no effect."""
+        result = extract_effect("make it red")
+        assert result is None
+
+    def test_empty_string(self):
+        """Test empty string."""
+        result = extract_effect("")
+        assert result is None
+
+    def test_none_input(self):
+        """Test None input."""
+        result = extract_effect(None)
+        assert result is None
+
+    def test_all_transition_effects_recognized(self):
+        """Test that all transition effects are recognized."""
+        transition_effects = [
+            "fade",
+            "wipe_down",
+            "wipe_up",
+            "wipe_left",
+            "wipe_right",
+            "chase_down",
+            "chase_up",
+            "chase_spiral",
+            "dissolve",
+            "expand",
+        ]
+        for effect in transition_effects:
+            result = extract_effect(f"use {effect} effect")
+            assert result == effect, f"Failed to extract effect: {effect}"
+
+    def test_all_buffer_effects_recognized(self):
+        """Test that all buffer effects are recognized."""
+        buffer_effects = [
+            "colour_stack",
+            "colour_rain",
+            "colour_trail",
+            "colour_waterfall",
+            "colour_wave",
+            "colour_spiral",
+        ]
+        for effect in buffer_effects:
+            result = extract_effect(f"use {effect} effect")
+            assert result == effect, f"Failed to extract effect: {effect}"
+
+    def test_longer_effect_matched_first(self):
+        """Test that longer effect names are matched first."""
+        # "chase_spiral" should match before "chase_down" if both could match
+        result = extract_effect("chase_spiral")
+        assert result == "chase_spiral"
+
+    def test_effect_with_color(self):
+        """Test extracting effect when color is also present."""
+        result = extract_effect("fade to red")
+        assert result == "fade"
+
+    def test_effects_set_has_expected_count(self):
+        """Test that EFFECTS set has expected number of effects."""
+        assert len(EFFECTS) == 16  # 10 transition + 6 buffer effects

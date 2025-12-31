@@ -9,7 +9,7 @@ from typing import Optional
 
 from platforms.mastodon import MastodonPlatform
 from platforms.bluesky import BlueskyPlatform
-from color_parser import extract_color, get_default_color
+from color_parser import extract_color, extract_effect, get_default_color
 
 
 def load_config():
@@ -213,6 +213,7 @@ def _register_routes(app: Flask):
                 return jsonify(
                     {
                         "color": get_default_color(),
+                        "effect": None,
                         "message": "No mentions found",
                         "platform": platform_name,
                     }
@@ -227,10 +228,12 @@ def _register_routes(app: Flask):
                 text = re.sub(r"<[^>]+>", "", text)
 
                 color = extract_color(text)
+                effect = extract_effect(text)
                 if color:
                     return jsonify(
                         {
                             "color": color,
+                            "effect": effect,
                             "mention": {
                                 "text": text,
                                 "id": mention.get("id"),
@@ -245,6 +248,7 @@ def _register_routes(app: Flask):
             return jsonify(
                 {
                     "color": get_default_color(),
+                    "effect": None,
                     "message": "No color found in recent mentions",
                     "platform": platform_name,
                     "mentions_checked": len(mentions),
